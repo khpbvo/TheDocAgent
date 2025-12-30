@@ -5,49 +5,48 @@ Also exports approval-enabled tools that show diffs before applying changes.
 """
 
 # PDF tools
-from .pdf_tools import (
-    extract_pdf_text,
-    extract_pdf_tables,
-    get_pdf_metadata,
-    get_pdf_form_fields,
-    fill_pdf_form,
-    merge_pdfs,
-    split_pdf,
+# Approval-enabled tools (show diff + Y/N prompt before changes)
+from .approval_tools import (
+    APPROVAL_TOOLS,
+    add_xlsx_formula,
+    delete_docx_text,
+    insert_docx_text,
+    replace_docx_text,
+    reset_approval_state,
+    set_workspace_root,
+    update_xlsx_cell,
+    update_xlsx_range,
 )
 
 # DOCX tools
 from .docx_tools import (
+    add_docx_comment,
+    apply_tracked_changes,
+    create_docx,
     extract_docx_text,
     extract_docx_with_changes,
     get_docx_comments,
     get_docx_structure,
-    add_docx_comment,
-    create_docx,
-    apply_tracked_changes,
+)
+from .pdf_tools import (
+    extract_pdf_tables,
+    extract_pdf_text,
+    fill_pdf_form,
+    get_pdf_form_fields,
+    get_pdf_metadata,
+    merge_pdfs,
+    split_pdf,
 )
 
 # XLSX tools
 from .xlsx_tools import (
+    add_formula,
+    analyze_data,
+    get_formulas,
     get_sheet_names,
     read_sheet,
-    get_formulas,
-    analyze_data,
-    write_cell,
-    add_formula,
     recalculate_formulas,
-)
-
-# Approval-enabled tools (show diff + Y/N prompt before changes)
-from .approval_tools import (
-    replace_docx_text,
-    insert_docx_text,
-    delete_docx_text,
-    update_xlsx_cell,
-    add_xlsx_formula,
-    update_xlsx_range,
-    APPROVAL_TOOLS,
-    reset_approval_state,
-    set_workspace_root,
+    write_cell,
 )
 
 # All tools for easy import (read-only + direct write)

@@ -93,6 +93,55 @@ The agent tools are thin wrappers around existing skill scripts:
 
 ## Development Guidelines
 
+### Code Quality
+
+The project uses four linting/formatting tools configured in `pyproject.toml`:
+
+| Tool | Purpose | Settings |
+|------|---------|----------|
+| **black** | Code formatting | line-length=88, py311 |
+| **ruff** | Fast linting (replaces flake8, isort) | Strict with project-specific ignores |
+| **pyright** | Static type checking | Strict mode |
+| **pylint** | Deep code analysis | Strict with project-specific disables |
+
+#### Running Linters
+
+```bash
+# Format code
+black agent/ skills/
+
+# Lint and auto-fix
+ruff check agent/ skills/ --fix
+
+# Type check
+pyright agent/ skills/
+
+# Deep analysis
+pylint agent/ skills/
+```
+
+#### Full Quality Check
+
+```bash
+# Run all tools in sequence
+black agent/ skills/ && \
+ruff check agent/ skills/ --fix && \
+pyright agent/ skills/ && \
+pylint agent/ skills/
+```
+
+#### Expected Results
+- **black**: All files formatted
+- **ruff**: 0 errors (all checks passed)
+- **pyright**: <200 errors (mostly third-party type stubs)
+- **pylint**: Score >9.0/10
+
+#### Configuration Notes
+- Settings are in `pyproject.toml` (single config file)
+- Many lint rules are disabled for CLI/REPL patterns (print, global, etc.)
+- Type checking is relaxed for third-party libraries without stubs
+- See `pyproject.toml` comments for rule explanations
+
 ### Adding New Tools
 
 1. Create wrapper function with `@function_tool` decorator

@@ -32,7 +32,6 @@ Example usage:
 
 import html
 from pathlib import Path
-from typing import Optional, Union
 
 import defusedxml.minidom
 import defusedxml.sax
@@ -76,9 +75,9 @@ class XMLEditor:
     def get_node(
         self,
         tag: str,
-        attrs: Optional[dict[str, str]] = None,
-        line_number: Optional[Union[int, range]] = None,
-        contains: Optional[str] = None,
+        attrs: dict[str, str] | None = None,
+        line_number: int | range | None = None,
+        contains: str | None = None,
     ):
         """
         Get a DOM element by tag and identifier.
@@ -120,9 +119,8 @@ class XMLEditor:
                 if isinstance(line_number, range):
                     if elem_line not in line_number:
                         continue
-                else:
-                    if elem_line != line_number:
-                        continue
+                elif elem_line != line_number:
+                    continue
 
             # Check attrs filter
             if attrs is not None:

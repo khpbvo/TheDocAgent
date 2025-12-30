@@ -4,18 +4,17 @@ Wraps existing skills/docx/ utilities for use with OpenAI Agents SDK.
 """
 
 import json
-import subprocess
 import sys
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Optional
 
 from agents import function_tool
 
 # Try to import pypandoc (handles pandoc binary location automatically)
 try:
     import pypandoc
+
     PYPANDOC_AVAILABLE = True
 except ImportError:
     PYPANDOC_AVAILABLE = False
@@ -46,12 +45,11 @@ def extract_docx_text(file_path: str) -> str:
     try:
         if PYPANDOC_AVAILABLE:
             # Use pypandoc which handles finding pandoc automatically
-            content = pypandoc.convert_file(str(path), 'markdown')
+            content = pypandoc.convert_file(str(path), "markdown")
             return content if content.strip() else "No text content found in document."
-        else:
-            return "Error: pypandoc not installed. Run: pip install pypandoc_binary"
+        return "Error: pypandoc not installed. Run: pip install pypandoc_binary"
     except Exception as e:
-        return f"Error extracting DOCX text: {str(e)}"
+        return f"Error extracting DOCX text: {e!s}"
 
 
 @function_tool
@@ -76,15 +74,12 @@ def extract_docx_with_changes(file_path: str) -> str:
         if PYPANDOC_AVAILABLE:
             # Use pypandoc with track-changes option
             content = pypandoc.convert_file(
-                str(path),
-                'markdown',
-                extra_args=['--track-changes=all']
+                str(path), "markdown", extra_args=["--track-changes=all"]
             )
             return content if content.strip() else "No text content found in document."
-        else:
-            return "Error: pypandoc not installed. Run: pip install pypandoc_binary"
+        return "Error: pypandoc not installed. Run: pip install pypandoc_binary"
     except Exception as e:
-        return f"Error extracting DOCX with tracked changes: {str(e)}"
+        return f"Error extracting DOCX with tracked changes: {e!s}"
 
 
 @function_tool
@@ -139,7 +134,7 @@ def get_docx_comments(file_path: str) -> str:
 
         return json.dumps(comments, indent=2)
     except Exception as e:
-        return f"Error extracting comments: {str(e)}"
+        return f"Error extracting comments: {e!s}"
 
 
 @function_tool
@@ -190,7 +185,7 @@ def get_docx_structure(file_path: str) -> str:
 
         return "\n".join(structure)
     except Exception as e:
-        return f"Error getting document structure: {str(e)}"
+        return f"Error getting document structure: {e!s}"
 
 
 @function_tool
@@ -249,11 +244,11 @@ def add_docx_comment(
     except ImportError as e:
         return f"Error: Required skill module not found: {e}. Make sure skills/docx/ is properly set up."
     except Exception as e:
-        return f"Error adding comment: {str(e)}"
+        return f"Error adding comment: {e!s}"
 
 
 @function_tool
-def create_docx(content: str, output_path: str, title: Optional[str] = None) -> str:
+def create_docx(content: str, output_path: str, title: str | None = None) -> str:
     """Create a new Word document with the given content.
 
     Creates a simple document with the provided text content.
@@ -278,15 +273,12 @@ def create_docx(content: str, output_path: str, title: Optional[str] = None) -> 
 
         # Use pypandoc to convert markdown to docx
         pypandoc.convert_text(
-            full_content,
-            'docx',
-            format='markdown',
-            outputfile=output_path
+            full_content, "docx", format="markdown", outputfile=output_path
         )
 
         return f"Successfully created document at: {output_path}"
     except Exception as e:
-        return f"Error creating DOCX: {str(e)}"
+        return f"Error creating DOCX: {e!s}"
 
 
 @function_tool
@@ -348,4 +340,4 @@ def apply_tracked_changes(
     except ImportError as e:
         return f"Error: Required skill module not found: {e}."
     except Exception as e:
-        return f"Error applying tracked changes: {str(e)}"
+        return f"Error applying tracked changes: {e!s}"

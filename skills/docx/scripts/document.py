@@ -30,7 +30,7 @@ import html
 import random
 import shutil
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from defusedxml import minidom
@@ -127,9 +127,9 @@ class DocxXMLEditor(XMLEditor):
         Args:
             nodes: List of DOM nodes to process
         """
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         def is_inside_deletion(elem):
             """Check if element is inside a w:del element."""
@@ -160,9 +160,8 @@ class DocxXMLEditor(XMLEditor):
             if is_inside_deletion(elem):
                 if not elem.hasAttribute("w:rsidDel"):
                     elem.setAttribute("w:rsidDel", self.rsid)
-            else:
-                if not elem.hasAttribute("w:rsidR"):
-                    elem.setAttribute("w:rsidR", self.rsid)
+            elif not elem.hasAttribute("w:rsidR"):
+                elem.setAttribute("w:rsidR", self.rsid)
 
         def add_tracked_change_attrs(elem):
             # Auto-assign w:id if not present
@@ -427,8 +426,7 @@ class DocxXMLEditor(XMLEditor):
         # Return based on input type
         if is_single_del and created_insertion:
             return [elem, created_insertion]
-        else:
-            return [elem]
+        return [elem]
 
     @staticmethod
     def suggest_paragraph(xml_content: str) -> str:
@@ -450,9 +448,11 @@ class DocxXMLEditor(XMLEditor):
         pPr_list = para.getElementsByTagName("w:pPr")
         if not pPr_list:
             pPr = doc.createElement("w:pPr")
-            para.insertBefore(
-                pPr, para.firstChild
-            ) if para.firstChild else para.appendChild(pPr)
+            (
+                para.insertBefore(pPr, para.firstChild)
+                if para.firstChild
+                else para.appendChild(pPr)
+            )
         else:
             pPr = pPr_list[0]
 
@@ -466,9 +466,11 @@ class DocxXMLEditor(XMLEditor):
 
         # Add <w:ins/> to w:rPr
         ins_marker = doc.createElement("w:ins")
-        rPr.insertBefore(
-            ins_marker, rPr.firstChild
-        ) if rPr.firstChild else rPr.appendChild(ins_marker)
+        (
+            rPr.insertBefore(ins_marker, rPr.firstChild)
+            if rPr.firstChild
+            else rPr.appendChild(ins_marker)
+        )
 
         # Wrap all non-pPr children in <w:ins>
         ins_wrapper = doc.createElement("w:ins")
@@ -531,7 +533,7 @@ class DocxXMLEditor(XMLEditor):
 
             return del_wrapper
 
-        elif elem.nodeName == "w:p":
+        if elem.nodeName == "w:p":
             # Check for existing tracked changes
             if elem.getElementsByTagName("w:ins") or elem.getElementsByTagName("w:del"):
                 raise ValueError("w:p element already contains tracked changes")
@@ -553,9 +555,11 @@ class DocxXMLEditor(XMLEditor):
 
                 # Add <w:del/> marker
                 del_marker = self.dom.createElement("w:del")
-                rPr.insertBefore(
-                    del_marker, rPr.firstChild
-                ) if rPr.firstChild else rPr.appendChild(del_marker)
+                (
+                    rPr.insertBefore(del_marker, rPr.firstChild)
+                    if rPr.firstChild
+                    else rPr.appendChild(del_marker)
+                )
 
             # Convert w:t → w:delText in all runs
             for t_elem in list(elem.getElementsByTagName("w:t")):
@@ -589,8 +593,7 @@ class DocxXMLEditor(XMLEditor):
 
             return elem
 
-        else:
-            raise ValueError(f"Element must be w:r or w:p, got {elem.nodeName}")
+        raise ValueError(f"Element must be w:r or w:p, got {elem.nodeName}")
 
 
 def _generate_hex_id() -> str:
@@ -730,7 +733,7 @@ class Document:
         comment_id = self.next_comment_id
         para_id = _generate_hex_id()
         durable_id = _generate_hex_id()
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Add comment ranges to document.xml immediately
         self._document.insert_before(start, self._comment_range_start_xml(comment_id))
@@ -787,7 +790,7 @@ class Document:
         comment_id = self.next_comment_id
         para_id = _generate_hex_id()
         durable_id = _generate_hex_id()
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Add comment ranges to document.xml immediately
         parent_start_elem = self._document.get_node(
@@ -1029,10 +1032,10 @@ class Document:
 
         if not rsids_elements:
             # Add new rsids section
-            rsids_xml = f'''<{prefix}:rsids>
+            rsids_xml = f"""<{prefix}:rsids>
   <{prefix}:rsidRoot {prefix}:val="{self.rsid}"/>
   <{prefix}:rsid {prefix}:val="{self.rsid}"/>
-</{prefix}:rsids>'''
+</{prefix}:rsids>"""
 
             # Try to insert after compat, before clrSchemeMapping, or before closing tag
             inserted = False
@@ -1080,12 +1083,12 @@ class Document:
         )
         # Note: w:rsidR, w:rsidRDefault, w:rsidP on w:p, w:rsidR on w:r,
         # and w:author, w:date, w:initials on w:comment are automatically added by DocxXMLEditor
-        comment_xml = f'''<w:comment w:id="{comment_id}">
+        comment_xml = f"""<w:comment w:id="{comment_id}">
   <w:p w14:paraId="{para_id}" w14:textId="77777777">
     <w:r><w:rPr><w:rStyle w:val="CommentReference"/></w:rPr><w:annotationRef/></w:r>
     <w:r><w:rPr><w:color w:val="000000"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t>{escaped_text}</w:t></w:r>
   </w:p>
-</w:comment>'''
+</w:comment>"""
         editor.append_to(root, comment_xml)
 
     def _add_to_comments_extended_xml(self, para_id, parent_para_id):
@@ -1139,21 +1142,21 @@ class Document:
 
         Note: w:rsidR is automatically added by DocxXMLEditor.
         """
-        return f'''<w:commentRangeEnd w:id="{comment_id}"/>
+        return f"""<w:commentRangeEnd w:id="{comment_id}"/>
 <w:r>
   <w:rPr><w:rStyle w:val="CommentReference"/></w:rPr>
   <w:commentReference w:id="{comment_id}"/>
-</w:r>'''
+</w:r>"""
 
     def _comment_ref_run_xml(self, comment_id):
         """Generate XML for comment reference run.
 
         Note: w:rsidR is automatically added by DocxXMLEditor.
         """
-        return f'''<w:r>
+        return f"""<w:r>
   <w:rPr><w:rStyle w:val="CommentReference"/></w:rPr>
   <w:commentReference w:id="{comment_id}"/>
-</w:r>'''
+</w:r>"""
 
     # ==================== Private: Metadata Updates ====================
 
@@ -1195,9 +1198,9 @@ class Document:
 
         # Add author with proper XML escaping to prevent injection
         escaped_author = html.escape(author, quote=True)
-        person_xml = f'''<w15:person w15:author="{escaped_author}">
+        person_xml = f"""<w15:person w15:author="{escaped_author}">
   <w15:presenceInfo w15:providerId="None" w15:userId="{escaped_author}"/>
-</w15:person>'''
+</w15:person>"""
         editor.append_to(root, person_xml)
 
     def _ensure_comment_relationships(self):

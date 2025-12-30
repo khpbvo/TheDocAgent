@@ -161,7 +161,7 @@ class RedliningValidator:
                         str(original_file),
                         str(modified_file),
                     ],
-                    capture_output=True,
+                    check=False, capture_output=True,
                     text=True,
                 )
 
@@ -192,7 +192,7 @@ class RedliningValidator:
                         str(original_file),
                         str(modified_file),
                     ],
-                    capture_output=True,
+                    check=False, capture_output=True,
                     text=True,
                 )
 

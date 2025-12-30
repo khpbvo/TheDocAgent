@@ -6,7 +6,6 @@ Shows a diff preview and Y/N buttons for approving document modifications.
 import re
 import threading
 from dataclasses import dataclass
-from typing import Callable
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
@@ -17,6 +16,7 @@ from textual.widgets import Button, Label, Static
 @dataclass
 class ApprovalRequest:
     """A pending approval request."""
+
     file_path: str
     description: str
     diff_text: str
@@ -31,8 +31,8 @@ class ApprovalRequest:
 
 def strip_ansi(text: str) -> str:
     """Remove ANSI escape codes from text."""
-    ansi_pattern = re.compile(r'\x1b\[[0-9;]*m')
-    return ansi_pattern.sub('', text)
+    ansi_pattern = re.compile(r"\x1b\[[0-9;]*m")
+    return ansi_pattern.sub("", text)
 
 
 class ApprovalDialog(ModalScreen[bool]):

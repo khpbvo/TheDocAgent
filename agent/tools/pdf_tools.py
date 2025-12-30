@@ -7,7 +7,6 @@ import json
 import sys
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 from agents import function_tool
 
@@ -17,7 +16,7 @@ sys.path.insert(0, str(SKILLS_DIR / "pdf" / "scripts"))
 
 
 @function_tool
-def extract_pdf_text(file_path: str, page_numbers_json: Optional[str] = None) -> str:
+def extract_pdf_text(file_path: str, page_numbers_json: str | None = None) -> str:
     """Extract text content from a PDF file.
 
     Args:
@@ -49,7 +48,9 @@ def extract_pdf_text(file_path: str, page_numbers_json: Optional[str] = None) ->
         text_content = []
         with pdfplumber.open(file_path) as pdf:
             total_pages = len(pdf.pages)
-            pages_to_process = page_numbers if page_numbers else list(range(1, total_pages + 1))
+            pages_to_process = (
+                page_numbers if page_numbers else list(range(1, total_pages + 1))
+            )
 
             for page_num in pages_to_process:
                 if 1 <= page_num <= total_pages:
@@ -58,15 +59,21 @@ def extract_pdf_text(file_path: str, page_numbers_json: Optional[str] = None) ->
                     if text:
                         text_content.append(f"=== Page {page_num} ===\n{text}")
                 else:
-                    text_content.append(f"=== Page {page_num} === (invalid page number)")
+                    text_content.append(
+                        f"=== Page {page_num} === (invalid page number)"
+                    )
 
-        return "\n\n".join(text_content) if text_content else "No text content found in PDF."
+        return (
+            "\n\n".join(text_content)
+            if text_content
+            else "No text content found in PDF."
+        )
     except Exception as e:
-        return f"Error extracting PDF text: {str(e)}"
+        return f"Error extracting PDF text: {e!s}"
 
 
 @function_tool
-def extract_pdf_tables(file_path: str, page_number: Optional[int] = None) -> str:
+def extract_pdf_tables(file_path: str, page_number: int | None = None) -> str:
     """Extract tables from a PDF file as structured data.
 
     Args:
@@ -86,7 +93,9 @@ def extract_pdf_tables(file_path: str, page_number: Optional[int] = None) -> str
     try:
         all_tables = []
         with pdfplumber.open(file_path) as pdf:
-            pages_to_process = [page_number] if page_number else list(range(1, len(pdf.pages) + 1))
+            pages_to_process = (
+                [page_number] if page_number else list(range(1, len(pdf.pages) + 1))
+            )
 
             for page_num in pages_to_process:
                 if 1 <= page_num <= len(pdf.pages):
@@ -94,20 +103,22 @@ def extract_pdf_tables(file_path: str, page_number: Optional[int] = None) -> str
                     tables = page.extract_tables()
                     for i, table in enumerate(tables):
                         if table:
-                            all_tables.append({
-                                "page": page_num,
-                                "table_index": i + 1,
-                                "rows": len(table),
-                                "columns": len(table[0]) if table else 0,
-                                "data": table,
-                            })
+                            all_tables.append(
+                                {
+                                    "page": page_num,
+                                    "table_index": i + 1,
+                                    "rows": len(table),
+                                    "columns": len(table[0]) if table else 0,
+                                    "data": table,
+                                }
+                            )
 
         if not all_tables:
             return "No tables found in PDF."
 
         return json.dumps(all_tables, indent=2)
     except Exception as e:
-        return f"Error extracting PDF tables: {str(e)}"
+        return f"Error extracting PDF tables: {e!s}"
 
 
 @function_tool
@@ -136,14 +147,18 @@ def get_pdf_metadata(file_path: str) -> str:
             "subject": meta.subject if meta else None,
             "creator": meta.creator if meta else None,
             "producer": meta.producer if meta else None,
-            "creation_date": str(meta.creation_date) if meta and meta.creation_date else None,
-            "modification_date": str(meta.modification_date) if meta and meta.modification_date else None,
+            "creation_date": (
+                str(meta.creation_date) if meta and meta.creation_date else None
+            ),
+            "modification_date": (
+                str(meta.modification_date) if meta and meta.modification_date else None
+            ),
             "page_count": len(reader.pages),
         }
 
         return json.dumps(metadata, indent=2, default=str)
     except Exception as e:
-        return f"Error getting PDF metadata: {str(e)}"
+        return f"Error getting PDF metadata: {e!s}"
 
 
 @function_tool
@@ -196,7 +211,7 @@ def get_pdf_form_fields(file_path: str) -> str:
 
         return json.dumps(field_info, indent=2)
     except Exception as e:
-        return f"Error extracting form fields: {str(e)}"
+        return f"Error extracting form fields: {e!s}"
 
 
 @function_tool
@@ -224,7 +239,7 @@ def fill_pdf_form(file_path: str, field_values_json: str, output_path: str) -> s
         # Parse the JSON string
         field_values = json.loads(field_values_json)
     except json.JSONDecodeError as e:
-        return f"Error: Invalid JSON for field_values: {str(e)}"
+        return f"Error: Invalid JSON for field_values: {e!s}"
 
     try:
         # Get field info to map field names to pages
@@ -243,11 +258,13 @@ def fill_pdf_form(file_path: str, field_values_json: str, output_path: str) -> s
         fields_to_fill = []
         for field_id, value in field_values.items():
             field_info = fields_by_id[field_id]
-            fields_to_fill.append({
-                "field_id": field_id,
-                "page": field_info["page"],
-                "value": value,
-            })
+            fields_to_fill.append(
+                {
+                    "field_id": field_id,
+                    "page": field_info["page"],
+                    "value": value,
+                }
+            )
 
         # Write to temp JSON file and use existing skill
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
@@ -256,7 +273,7 @@ def fill_pdf_form(file_path: str, field_values_json: str, output_path: str) -> s
 
         try:
             # Apply monkeypatch for pypdf bug
-            from fill_fillable_fields import monkeypatch_pydpf_method, fill_pdf_fields
+            from fill_fillable_fields import fill_pdf_fields, monkeypatch_pydpf_method
 
             monkeypatch_pydpf_method()
             fill_pdf_fields(file_path, tmp_path, output_path)
@@ -265,7 +282,7 @@ def fill_pdf_form(file_path: str, field_values_json: str, output_path: str) -> s
 
         return f"Successfully filled PDF form. Output saved to: {output_path}"
     except Exception as e:
-        return f"Error filling PDF form: {str(e)}"
+        return f"Error filling PDF form: {e!s}"
 
 
 @function_tool
@@ -280,12 +297,12 @@ def merge_pdfs(file_paths_json: str, output_path: str) -> str:
     Returns:
         Success message with page counts, or error message.
     """
-    from pypdf import PdfWriter, PdfReader
+    from pypdf import PdfReader, PdfWriter
 
     try:
         file_paths = json.loads(file_paths_json)
     except json.JSONDecodeError as e:
-        return f"Error: Invalid JSON for file_paths: {str(e)}"
+        return f"Error: Invalid JSON for file_paths: {e!s}"
 
     # Validate all files exist
     for fp in file_paths:
@@ -306,10 +323,12 @@ def merge_pdfs(file_paths_json: str, output_path: str) -> str:
             writer.write(output)
 
         total_pages = sum(page_counts)
-        details = ", ".join(f"{Path(fp).name}: {pc} pages" for fp, pc in zip(file_paths, page_counts))
+        details = ", ".join(
+            f"{Path(fp).name}: {pc} pages" for fp, pc in zip(file_paths, page_counts)
+        )
         return f"Successfully merged {len(file_paths)} PDFs ({total_pages} total pages). {details}. Output: {output_path}"
     except Exception as e:
-        return f"Error merging PDFs: {str(e)}"
+        return f"Error merging PDFs: {e!s}"
 
 
 @function_tool
@@ -347,4 +366,4 @@ def split_pdf(file_path: str, output_dir: str) -> str:
 
         return f"Successfully split PDF into {len(created_files)} pages in {output_dir}"
     except Exception as e:
-        return f"Error splitting PDF: {str(e)}"
+        return f"Error splitting PDF: {e!s}"

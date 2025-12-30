@@ -14,15 +14,15 @@ import time
 from datetime import datetime
 from typing import Any
 
-from openai.types.responses import ResponseTextDeltaEvent
 from agents import (
     Agent,
-    Runner,
-    SQLiteSession,
+    AgentUpdatedStreamEvent,
     RawResponsesStreamEvent,
     RunItemStreamEvent,
-    AgentUpdatedStreamEvent,
+    Runner,
+    SQLiteSession,
 )
+from openai.types.responses import ResponseTextDeltaEvent
 
 try:
     from rich import box
@@ -39,10 +39,18 @@ except Exception:
     RICH_AVAILABLE = False
 
 try:
+    from textual import work
     from textual.app import App, ComposeResult
     from textual.containers import Horizontal, Vertical
-    from textual.widgets import Button, DataTable, Footer, Header, Input, RichLog, Static
-    from textual import work
+    from textual.widgets import (
+        Button,
+        DataTable,
+        Footer,
+        Header,
+        Input,
+        RichLog,
+        Static,
+    )
 
     TEXTUAL_AVAILABLE = True
 except Exception:
@@ -53,11 +61,12 @@ try:
     from .approval_dialog import (
         ApprovalDialog,
         ApprovalRequest,
-        set_app_reference,
         clear_app_reference,
-        enable_ui_approval,
         disable_ui_approval,
+        enable_ui_approval,
+        set_app_reference,
     )
+
     APPROVAL_DIALOG_AVAILABLE = True
 except ImportError:
     APPROVAL_DIALOG_AVAILABLE = False
@@ -121,16 +130,22 @@ def print_header():
     """Print the REPL header."""
     print()
     print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 60}{Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.CYAN}       Document Analyzer Agent - Interactive REPL{Colors.RESET}")
+    print(
+        f"{Colors.BOLD}{Colors.CYAN}       Document Analyzer Agent - Interactive REPL{Colors.RESET}"
+    )
     print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 60}{Colors.RESET}")
-    print(f"{Colors.DIM}Type 'help' for commands, 'exit' or 'quit' to leave{Colors.RESET}")
+    print(
+        f"{Colors.DIM}Type 'help' for commands, 'exit' or 'quit' to leave{Colors.RESET}"
+    )
     print()
 
 
 def print_tool_call(tool_name: str, args: str = ""):
     """Print a visible tool call notification."""
     timestamp = datetime.now().strftime("%H:%M:%S")
-    print(f"\n{Colors.BG_GRAY}{Colors.YELLOW} [{timestamp}] TOOL: {tool_name} {Colors.RESET}")
+    print(
+        f"\n{Colors.BG_GRAY}{Colors.YELLOW} [{timestamp}] TOOL: {tool_name} {Colors.RESET}"
+    )
     if args:
         # Truncate long arguments for display
         display_args = args[:300] + "..." if len(args) > 300 else args
@@ -241,7 +256,9 @@ def _close_markdown_fences(text: str) -> str:
 
 
 class KnightRiderIndicator:
-    def __init__(self, width: int = 12, speed: float = 8.0, idle_threshold: float = 0.4) -> None:
+    def __init__(
+        self, width: int = 12, speed: float = 8.0, idle_threshold: float = 0.4
+    ) -> None:
         self.width = max(1, width)
         self.speed = speed
         self.idle_threshold = idle_threshold
@@ -300,7 +317,12 @@ def _get_tool_call_meta(raw_item: Any) -> tuple[str, str | None, str, str | None
         args = getattr(raw_item, "arguments", None)
 
     if isinstance(raw_item, dict):
-        tool_name = tool_name or raw_item.get("name") or raw_item.get("tool") or raw_item.get("type")
+        tool_name = (
+            tool_name
+            or raw_item.get("name")
+            or raw_item.get("tool")
+            or raw_item.get("type")
+        )
         server_label = server_label or raw_item.get("server_label")
         call_id = call_id or raw_item.get("call_id") or raw_item.get("id")
         args = args if args is not None else raw_item.get("arguments")
@@ -347,7 +369,9 @@ def _build_layout(
     )
 
     response_renderable = Markdown(response_text or " ")
-    layout["response"].update(Panel(response_renderable, title="Response", border_style="cyan"))
+    layout["response"].update(
+        Panel(response_renderable, title="Response", border_style="cyan")
+    )
 
     if show_tool_calls:
         tool_renderable = _render_tool_table(tool_events)
@@ -364,7 +388,9 @@ def _build_layout(
 def _print_header_rich(console: Console) -> None:
     console.print()
     console.print("=" * 60, style="bold cyan")
-    console.print("       Document Analyzer Agent - Interactive REPL", style="bold cyan")
+    console.print(
+        "       Document Analyzer Agent - Interactive REPL", style="bold cyan"
+    )
     console.print("=" * 60, style="bold cyan")
     console.print("Type 'help' for commands, 'exit' or 'quit' to leave", style="dim")
     console.print()
@@ -440,13 +466,15 @@ class DocumentAnalyzerApp(App):
         self._prompt: Input | None = None
         self._send_button: Button | None = None
         self._run_task = None  # Worker instance
-        self._pending_approval: "ApprovalRequest | None" = None  # For approval dialog
+        self._pending_approval: ApprovalRequest | None = None  # For approval dialog
 
     def compose(self) -> ComposeResult:
         yield Header()
         with Horizontal(id="main"):
             with Vertical(id="left"):
-                yield RichLog(id="response_log", wrap=True, highlight=False, markup=False)
+                yield RichLog(
+                    id="response_log", wrap=True, highlight=False, markup=False
+                )
             with Vertical(id="right"):
                 yield Static(id="status")
                 yield DataTable(id="tools")
@@ -512,7 +540,9 @@ class DocumentAnalyzerApp(App):
 
         if cmd == "history":
             items = await self.session.get_items()
-            msg_count = len([i for i in items if isinstance(i, dict) and i.get("role") == "user"])
+            msg_count = len(
+                [i for i in items if isinstance(i, dict) and i.get("role") == "user"]
+            )
             self._append_system_message(
                 f"Conversation has {msg_count} user messages and {len(items)} total items."
             )
@@ -536,7 +566,11 @@ class DocumentAnalyzerApp(App):
         """Handle worker state changes to ensure proper cleanup."""
         from textual.worker import WorkerState
 
-        if event.state in (WorkerState.SUCCESS, WorkerState.ERROR, WorkerState.CANCELLED):
+        if event.state in (
+            WorkerState.SUCCESS,
+            WorkerState.ERROR,
+            WorkerState.CANCELLED,
+        ):
             # Ensure UI is reset when worker finishes
             if self._agent_running:
                 self._agent_running = False
@@ -624,7 +658,9 @@ class DocumentAnalyzerApp(App):
 
         status_lines = [self._indicator.render()]
         if self.show_reasoning and self._reasoning_summary:
-            status_lines.append(Text(f"Reasoning: {self._reasoning_summary}", style="magenta"))
+            status_lines.append(
+                Text(f"Reasoning: {self._reasoning_summary}", style="magenta")
+            )
         self._status.update(Group(*status_lines))
 
     def _clear_tools(self) -> None:
@@ -641,7 +677,9 @@ class DocumentAnalyzerApp(App):
         if not self.show_tool_calls or not self._tools:
             return
 
-        self._tool_events.append({"event": event_type, "tool": tool, "preview": preview})
+        self._tool_events.append(
+            {"event": event_type, "tool": tool, "preview": preview}
+        )
         if len(self._tool_events) > self._max_tool_events:
             self._tool_events = self._tool_events[-self._max_tool_events :]
 
@@ -682,10 +720,18 @@ class DocumentAnalyzerApp(App):
                 elif isinstance(event, RunItemStreamEvent):
                     if event.item.type == "tool_call_item":
                         raw_item = event.item.raw_item
-                        tool_name, server_label, args, call_id = _get_tool_call_meta(raw_item)
-                        display_name = f"{tool_name} ({server_label})" if server_label else tool_name
+                        tool_name, server_label, args, call_id = _get_tool_call_meta(
+                            raw_item
+                        )
+                        display_name = (
+                            f"{tool_name} ({server_label})"
+                            if server_label
+                            else tool_name
+                        )
                         preview = _shorten(args, 140) or "-"
-                        self.call_from_thread(self._add_tool_event, "call", display_name, preview)
+                        self.call_from_thread(
+                            self._add_tool_event, "call", display_name, preview
+                        )
                         if call_id:
                             self._call_id_map[call_id] = display_name
                         self._indicator.touch()
@@ -697,20 +743,26 @@ class DocumentAnalyzerApp(App):
                         display_name = self._call_id_map.get(call_id, "unknown")
                         output_text = _stringify(event.item.output)
                         preview = _shorten(output_text, 160) or "-"
-                        self.call_from_thread(self._add_tool_event, "output", display_name, preview)
+                        self.call_from_thread(
+                            self._add_tool_event, "output", display_name, preview
+                        )
                         self._indicator.touch()
                         updated = True
 
                     elif event.item.type == "reasoning_item" and self.show_reasoning:
                         raw_item = event.item.raw_item
                         summary_items = getattr(raw_item, "summary", None) or []
-                        summary_text = " ".join(getattr(item, "text", "") for item in summary_items).strip()
+                        summary_text = " ".join(
+                            getattr(item, "text", "") for item in summary_items
+                        ).strip()
                         if summary_text:
                             self._reasoning_summary = _shorten(summary_text, 200)
                             updated = True
 
                 elif isinstance(event, AgentUpdatedStreamEvent):
-                    self.call_from_thread(self._add_tool_event, "agent", event.new_agent.name, "handoff")
+                    self.call_from_thread(
+                        self._add_tool_event, "agent", event.new_agent.name, "handoff"
+                    )
                     updated = True
 
                 if updated:
@@ -721,7 +773,9 @@ class DocumentAnalyzerApp(App):
             self.call_from_thread(self._append_system_message, f"Error: {e}")
         finally:
             if self._current_response:
-                self._history_entries.append(f"**Assistant:**\n{self._current_response}")
+                self._history_entries.append(
+                    f"**Assistant:**\n{self._current_response}"
+                )
                 self._current_response = ""
             self._indicator.stop()
             self._agent_running = False
@@ -737,7 +791,9 @@ async def run_document_analyzer_repl_textual(
     show_tool_calls: bool = True,
 ) -> None:
     if not TEXTUAL_AVAILABLE:
-        raise RuntimeError("Textual is not available. Install it with: pip install textual")
+        raise RuntimeError(
+            "Textual is not available. Install it with: pip install textual"
+        )
 
     app = DocumentAnalyzerApp(
         agent=agent,
@@ -791,7 +847,9 @@ async def run_document_analyzer_repl_rich(
 
         if cmd == "history":
             items = await session.get_items()
-            msg_count = len([i for i in items if isinstance(i, dict) and i.get("role") == "user"])
+            msg_count = len(
+                [i for i in items if isinstance(i, dict) and i.get("role") == "user"]
+            )
             console.print(
                 f"Conversation has {msg_count} user messages and {len(items)} total items.",
                 style="cyan",
@@ -815,12 +873,18 @@ async def run_document_analyzer_repl_rich(
             )
 
             indicator.start()
-            display_text = _close_markdown_fences(_tail_lines(accumulated_text, max_response_lines))
+            display_text = _close_markdown_fences(
+                _tail_lines(accumulated_text, max_response_lines)
+            )
             status_lines = [indicator]
             if reasoning_summary:
-                status_lines.append(Text(f"Reasoning: {reasoning_summary}", style="magenta"))
+                status_lines.append(
+                    Text(f"Reasoning: {reasoning_summary}", style="magenta")
+                )
             status_group = Group(*status_lines)
-            layout = _build_layout(display_text, tool_events, show_tool_calls, status_group)
+            layout = _build_layout(
+                display_text, tool_events, show_tool_calls, status_group
+            )
             with Live(layout, console=console, refresh_per_second=12) as live:
                 async for event in result.stream_events():
                     updated = False
@@ -829,15 +893,23 @@ async def run_document_analyzer_repl_rich(
                         if isinstance(event.data, ResponseTextDeltaEvent):
                             accumulated_text += event.data.delta
                             if len(accumulated_text) > max_response_chars:
-                                accumulated_text = accumulated_text[-max_response_chars:]
+                                accumulated_text = accumulated_text[
+                                    -max_response_chars:
+                                ]
                             indicator.touch()
                             updated = True
 
                     elif isinstance(event, RunItemStreamEvent):
                         if event.item.type == "tool_call_item":
                             raw_item = event.item.raw_item
-                            tool_name, server_label, args, call_id = _get_tool_call_meta(raw_item)
-                            display_name = f"{tool_name} ({server_label})" if server_label else tool_name
+                            tool_name, server_label, args, call_id = (
+                                _get_tool_call_meta(raw_item)
+                            )
+                            display_name = (
+                                f"{tool_name} ({server_label})"
+                                if server_label
+                                else tool_name
+                            )
                             preview = _shorten(args, 140) or "-"
                             tool_events.append(
                                 {
@@ -870,7 +942,9 @@ async def run_document_analyzer_repl_rich(
                         elif event.item.type == "reasoning_item" and show_reasoning:
                             raw_item = event.item.raw_item
                             summary_items = getattr(raw_item, "summary", None) or []
-                            summary_text = " ".join(getattr(item, "text", "") for item in summary_items).strip()
+                            summary_text = " ".join(
+                                getattr(item, "text", "") for item in summary_items
+                            ).strip()
                             if summary_text:
                                 reasoning_summary = _shorten(summary_text, 200)
                                 updated = True
@@ -888,12 +962,18 @@ async def run_document_analyzer_repl_rich(
                     if updated:
                         if len(tool_events) > max_tool_events:
                             tool_events = tool_events[-max_tool_events:]
-                        display_text = _close_markdown_fences(_tail_lines(accumulated_text, max_response_lines))
+                        display_text = _close_markdown_fences(
+                            _tail_lines(accumulated_text, max_response_lines)
+                        )
                         status_lines = [indicator]
                         if reasoning_summary:
-                            status_lines.append(Text(f"Reasoning: {reasoning_summary}", style="magenta"))
+                            status_lines.append(
+                                Text(f"Reasoning: {reasoning_summary}", style="magenta")
+                            )
                         status_group = Group(*status_lines)
-                        layout = _build_layout(display_text, tool_events, show_tool_calls, status_group)
+                        layout = _build_layout(
+                            display_text, tool_events, show_tool_calls, status_group
+                        )
                         live.update(layout, refresh=True)
 
         except Exception as e:
@@ -945,8 +1025,12 @@ async def run_document_analyzer_repl_plain(
 
         if cmd == "history":
             items = await session.get_items()
-            msg_count = len([i for i in items if isinstance(i, dict) and i.get("role") == "user"])
-            print(f"{Colors.CYAN}Conversation has {msg_count} user messages and {len(items)} total items.{Colors.RESET}")
+            msg_count = len(
+                [i for i in items if isinstance(i, dict) and i.get("role") == "user"]
+            )
+            print(
+                f"{Colors.CYAN}Conversation has {msg_count} user messages and {len(items)} total items.{Colors.RESET}"
+            )
             continue
 
         if not user_input.strip():
@@ -975,15 +1059,27 @@ async def run_document_analyzer_repl_plain(
 
                         # Check if this looks like reasoning at the start
                         if show_reasoning and len(accumulated_text) < 150:
-                            if any(accumulated_text.strip().startswith(ind) for ind in REASONING_INDICATORS):
+                            if any(
+                                accumulated_text.strip().startswith(ind)
+                                for ind in REASONING_INDICATORS
+                            ):
                                 if not in_reasoning:
-                                    print(f"{Colors.MAGENTA}{Colors.ITALIC}", end="", flush=True)
+                                    print(
+                                        f"{Colors.MAGENTA}{Colors.ITALIC}",
+                                        end="",
+                                        flush=True,
+                                    )
                                     in_reasoning = True
 
                         # Check if we should end reasoning mode (e.g., tool call coming)
                         if in_reasoning and len(accumulated_text) > 150:
                             # Look for transition phrases that indicate reasoning is done
-                            transition_phrases = ["Now I'll", "Let me call", "I'll use the", "Using the"]
+                            transition_phrases = [
+                                "Now I'll",
+                                "Let me call",
+                                "I'll use the",
+                                "Using the",
+                            ]
                             for phrase in transition_phrases:
                                 if phrase in accumulated_text[-100:]:
                                     print(f"{Colors.RESET}", end="", flush=True)
@@ -1001,8 +1097,14 @@ async def run_document_analyzer_repl_plain(
                             in_reasoning = False
 
                         if show_tool_calls:
-                            tool_name, server_label, args, _ = _get_tool_call_meta(event.item.raw_item)
-                            display_name = f"{tool_name} ({server_label})" if server_label else tool_name
+                            tool_name, server_label, args, _ = _get_tool_call_meta(
+                                event.item.raw_item
+                            )
+                            display_name = (
+                                f"{tool_name} ({server_label})"
+                                if server_label
+                                else tool_name
+                            )
                             print_tool_call(display_name, args)
 
                     elif event.item.type == "tool_call_output_item":
@@ -1017,7 +1119,9 @@ async def run_document_analyzer_repl_plain(
 
                 # Handle agent updates (if using handoffs)
                 elif isinstance(event, AgentUpdatedStreamEvent):
-                    print(f"\n{Colors.CYAN}[Agent changed to: {event.new_agent.name}]{Colors.RESET}")
+                    print(
+                        f"\n{Colors.CYAN}[Agent changed to: {event.new_agent.name}]{Colors.RESET}"
+                    )
 
             # Reset formatting at end of response
             if in_reasoning:
@@ -1030,7 +1134,7 @@ async def run_document_analyzer_repl_plain(
             # Reset formatting on error
             if in_reasoning:
                 print(f"{Colors.RESET}", end="")
-            print(f"\n{Colors.RED}Error: {str(e)}{Colors.RESET}\n")
+            print(f"\n{Colors.RED}Error: {e!s}{Colors.RESET}\n")
 
 
 async def run_simple_repl(agent: Agent[Any], session: SQLiteSession) -> None:
@@ -1059,4 +1163,4 @@ async def run_simple_repl(agent: Agent[Any], session: SQLiteSession) -> None:
             result = await Runner.run(agent, user_input, session=session)
             print(f"\n{result.final_output}\n")
         except Exception as e:
-            print(f"\n{Colors.RED}Error: {str(e)}{Colors.RESET}\n")
+            print(f"\n{Colors.RED}Error: {e!s}{Colors.RESET}\n")

@@ -6,7 +6,6 @@ Wraps existing skills/xlsx/ utilities for use with OpenAI Agents SDK.
 import json
 import sys
 from pathlib import Path
-from typing import Optional
 
 from agents import function_tool
 
@@ -37,12 +36,12 @@ def get_sheet_names(file_path: str) -> str:
         wb.close()
         return f"Sheets in workbook ({len(sheets)} total): {', '.join(sheets)}"
     except Exception as e:
-        return f"Error reading Excel file: {str(e)}"
+        return f"Error reading Excel file: {e!s}"
 
 
 @function_tool
 def read_sheet(
-    file_path: str, sheet_name: Optional[str] = None, max_rows: int = 100
+    file_path: str, sheet_name: str | None = None, max_rows: int = 100
 ) -> str:
     """Read data from an Excel sheet.
 
@@ -89,11 +88,11 @@ def read_sheet(
 
         return json.dumps(result, indent=2)
     except Exception as e:
-        return f"Error reading Excel sheet: {str(e)}"
+        return f"Error reading Excel sheet: {e!s}"
 
 
 @function_tool
-def get_formulas(file_path: str, sheet_name: Optional[str] = None) -> str:
+def get_formulas(file_path: str, sheet_name: str | None = None) -> str:
     """Get formulas from an Excel sheet (not computed values).
 
     Args:
@@ -123,7 +122,11 @@ def get_formulas(file_path: str, sheet_name: Optional[str] = None) -> str:
         formulas = []
         for row in ws.iter_rows():
             for cell in row:
-                if cell.value and isinstance(cell.value, str) and cell.value.startswith("="):
+                if (
+                    cell.value
+                    and isinstance(cell.value, str)
+                    and cell.value.startswith("=")
+                ):
                     formulas.append({"cell": cell.coordinate, "formula": cell.value})
 
         wb.close()
@@ -132,17 +135,21 @@ def get_formulas(file_path: str, sheet_name: Optional[str] = None) -> str:
             return f"No formulas found in sheet '{ws.title}'."
 
         return json.dumps(
-            {"sheet_name": ws.title, "formula_count": len(formulas), "formulas": formulas},
+            {
+                "sheet_name": ws.title,
+                "formula_count": len(formulas),
+                "formulas": formulas,
+            },
             indent=2,
         )
     except Exception as e:
-        return f"Error reading formulas: {str(e)}"
+        return f"Error reading formulas: {e!s}"
 
 
 @function_tool
 def analyze_data(
     file_path: str,
-    sheet_name: Optional[str] = None,
+    sheet_name: str | None = None,
     analysis_type: str = "summary",
 ) -> str:
     """Perform data analysis on an Excel sheet using pandas.
@@ -170,26 +177,31 @@ def analyze_data(
 
         if analysis_type == "summary":
             return f"Statistical Summary for '{sheet_name or 'Sheet1'}':\n{df.describe().to_string()}"
-        elif analysis_type == "info":
+        if analysis_type == "info":
             info_str = f"Shape: {df.shape[0]} rows x {df.shape[1]} columns\n\n"
             info_str += "Column Info:\n"
             for col in df.columns:
                 non_null = df[col].notna().sum()
-                info_str += f"  {col}: {df[col].dtype}, {non_null}/{len(df)} non-null values\n"
+                info_str += (
+                    f"  {col}: {df[col].dtype}, {non_null}/{len(df)} non-null values\n"
+                )
             return info_str
-        elif analysis_type == "head":
+        if analysis_type == "head":
             return f"First 10 rows:\n{df.head(10).to_string()}"
-        elif analysis_type == "shape":
+        if analysis_type == "shape":
             return f"Dataset shape: {df.shape[0]} rows, {df.shape[1]} columns\nColumns: {', '.join(str(c) for c in df.columns)}"
-        else:
-            return f"Unknown analysis type: {analysis_type}. Use 'summary', 'info', 'head', or 'shape'."
+        return f"Unknown analysis type: {analysis_type}. Use 'summary', 'info', 'head', or 'shape'."
     except Exception as e:
-        return f"Error analyzing Excel data: {str(e)}"
+        return f"Error analyzing Excel data: {e!s}"
 
 
 @function_tool
 def write_cell(
-    file_path: str, sheet_name: str, cell: str, value: str, output_path: Optional[str] = None
+    file_path: str,
+    sheet_name: str,
+    cell: str,
+    value: str,
+    output_path: str | None = None,
 ) -> str:
     """Write a value to a specific cell in an Excel file.
 
@@ -224,7 +236,7 @@ def write_cell(
 
         return f"Successfully wrote '{value}' to {sheet_name}!{cell}. Saved to: {save_path}"
     except Exception as e:
-        return f"Error writing to cell: {str(e)}"
+        return f"Error writing to cell: {e!s}"
 
 
 @function_tool
@@ -233,7 +245,7 @@ def add_formula(
     sheet_name: str,
     cell: str,
     formula: str,
-    output_path: Optional[str] = None,
+    output_path: str | None = None,
 ) -> str:
     """Add an Excel formula to a specific cell.
 
@@ -274,7 +286,7 @@ def add_formula(
 
         return f"Successfully added formula '{formula}' to {sheet_name}!{cell}. Saved to: {save_path}. Note: Run recalculate_formulas() to compute the value."
     except Exception as e:
-        return f"Error adding formula: {str(e)}"
+        return f"Error adding formula: {e!s}"
 
 
 @function_tool
@@ -307,4 +319,4 @@ def recalculate_formulas(file_path: str, timeout: int = 30) -> str:
     except ImportError:
         return "Error: recalc module not found. Make sure skills/xlsx/recalc.py exists and LibreOffice is installed."
     except Exception as e:
-        return f"Error recalculating formulas: {str(e)}"
+        return f"Error recalculating formulas: {e!s}"

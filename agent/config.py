@@ -10,7 +10,9 @@ from .tools import ALL_TOOLS, ALL_TOOLS_WITH_APPROVAL
 
 # Tool sets with hosted tools (web search runs on OpenAI servers)
 AGENT_TOOLS = [WebSearchTool(search_context_size="high")] + ALL_TOOLS
-AGENT_TOOLS_WITH_APPROVAL = [WebSearchTool(search_context_size="high")] + ALL_TOOLS_WITH_APPROVAL
+AGENT_TOOLS_WITH_APPROVAL = [
+    WebSearchTool(search_context_size="high")
+] + ALL_TOOLS_WITH_APPROVAL
 
 # Agent instructions
 AGENT_INSTRUCTIONS = """You are a Document Analyzer Agent specialized in analyzing and modifying PDF, DOCX, and XLSX files.
@@ -103,7 +105,7 @@ def create_agent(
     model_settings = ModelSettings(
         temperature=0.7,  # Balanced creativity and consistency
     )
-    
+
     tools = AGENT_TOOLS_WITH_APPROVAL if approval_mode else AGENT_TOOLS
 
     return Agent(
@@ -141,9 +143,9 @@ def create_reasoning_agent(
         reasoning=Reasoning(effort="high", summary="concise"),
         verbosity="medium",
     )
-    
+
     tools = AGENT_TOOLS_WITH_APPROVAL if approval_mode else AGENT_TOOLS
-    
+
     return Agent(
         name="Document Analyzer",
         instructions=AGENT_INSTRUCTIONS,

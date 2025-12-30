@@ -1,0 +1,213 @@
+[project]
+name = "thedocagent"
+version = "0.1.0"
+description = "Document Analyzer Agent with PDF, DOCX, and XLSX support"
+requires-python = ">=3.11"
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.venv
+    | __pycache__
+    | \.git
+)/
+'''
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+exclude = [".venv", "__pycache__", ".git"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+    "PTH",    # flake8-use-pathlib
+    "ERA",    # eradicate (commented out code)
+    "PL",     # Pylint
+    "RUF",    # Ruff-specific rules
+    "N",      # pep8-naming
+    "S",      # flake8-bandit (security)
+    "A",      # flake8-builtins
+    "COM",    # flake8-commas
+    "DTZ",    # flake8-datetimez
+    "T10",    # flake8-debugger
+    "EXE",    # flake8-executable
+    "ISC",    # flake8-implicit-str-concat
+    "ICN",    # flake8-import-conventions
+    "G",      # flake8-logging-format
+    "INP",    # flake8-no-pep420
+    "PIE",    # flake8-pie
+    "T20",    # flake8-print
+    "PYI",    # flake8-pyi
+    "Q",      # flake8-quotes
+    "RSE",    # flake8-raise
+    "RET",    # flake8-return
+    "SLF",    # flake8-self
+    "SLOT",   # flake8-slots
+    "TID",    # flake8-tidy-imports
+    "INT",    # flake8-gettext
+    "FLY",    # flynt
+    "PERF",   # perflint
+    "FURB",   # refurb
+    "LOG",    # flake8-logging
+]
+ignore = [
+    "E501",    # line too long (handled by black)
+    "COM812",  # missing trailing comma (conflicts with black)
+    "ISC001",  # single line implicit string concatenation (conflicts with black)
+    "T201",    # print found - this is a CLI REPL tool
+    "PLC0415", # import outside top-level - lazy imports are common pattern
+    "PLR2004", # magic value comparison - too noisy
+    "PLR0912", # too many branches - complex logic is sometimes needed
+    "PLR0915", # too many statements - complex functions are sometimes needed
+    "PLR0913", # too many arguments - some functions need many params
+    "PLR0911", # too many return statements
+    "S101",    # assert - useful for development
+    "S110",    # try-except-pass - sometimes needed
+    "S603",    # subprocess call - needed for shell operations
+    "S607",    # partial executable path - needed for system tools
+    "EXE001",  # shebang present but file not executable
+    "INP001",  # implicit namespace package - standalone scripts are fine
+    "TID252",  # relative imports - allow in packages
+    "PTH123",  # builtin open is fine for simple cases
+    "PTH103",  # os.makedirs is fine
+    "PTH110",  # os.path.exists is fine
+    "PTH111",  # os.path.expanduser is fine
+    "PTH118",  # os.path.join is fine
+    "PERF401", # explicit loops can be clearer than comprehensions
+    "SIM102",  # nested ifs can be clearer in some cases
+    "SIM105",  # try-except-pass is sometimes needed
+    "SIM118",  # key in dict.keys() is explicit
+    "RUF012",  # ClassVar for mutable class attrs - not always needed
+    "ARG001",  # unused function argument - overrides need this
+    "ARG002",  # unused method argument - overrides need this
+    "ERA001",  # commented out code - sometimes useful for reference
+    "PLW0603", # global statement - sometimes needed for state
+    "PLW0602", # global without assignment
+    "PLW2901", # loop variable overwritten
+    "PLR1714", # repeated equality comparisons
+    "N806",    # variable in function should be lowercase - PDF, DOCX are common
+    "N817",    # CamelCase imported as acronym
+    "N802",    # function name should be lowercase
+    "N803",    # argument name should be lowercase
+    "RUF005",  # collection literal concatenation
+    "DTZ005",  # datetime without tzinfo
+    "B905",    # zip without strict
+    "B007",    # unused loop variable
+    "PIE810",  # call startswith once
+    "SLF001",  # private member access - sometimes needed
+    "S112",    # try-except-continue
+    "S311",    # pseudo-random generators
+    "S314",    # xml parsing
+    "RUF022",  # __all__ not sorted
+    "RUF059",  # unused class attribute
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+"*_test.py" = ["S101"]    # Allow assert in tests
+"agent/repl.py" = ["PLW0603", "PERF401"]  # Allow globals and loops in REPL
+"agent/approval_dialog.py" = ["PLW0603"]  # Allow globals for state management
+"skills/*/scripts/*.py" = ["S311", "S314"]  # Allow random and xml in scripts
+
+[tool.ruff.lint.isort]
+known-first-party = ["agent", "skills"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+pythonPlatform = "All"
+typeCheckingMode = "strict"
+include = ["agent", "skills"]
+exclude = [".venv", "__pycache__"]
+# Core type checking - strict
+reportMissingImports = true
+reportMissingTypeStubs = false  # Third-party libs may lack stubs
+reportUnusedImport = true
+reportUnusedClass = true
+reportUnusedFunction = true
+reportUnusedVariable = true
+reportDuplicateImport = true
+reportPrivateUsage = true
+reportConstantRedefinition = true
+reportIncompatibleMethodOverride = true
+reportIncompatibleVariableOverride = true
+reportInconsistentConstructor = true
+reportOverlappingOverload = true
+# Relaxed for practical use
+reportUninitializedInstanceVariable = false  # Common pattern with dataclasses
+reportCallInDefaultInitializer = true
+reportUnnecessaryIsInstance = true
+reportUnnecessaryCast = true
+reportUnnecessaryComparison = true
+reportUnnecessaryContains = true
+reportAssertAlwaysTrue = true
+reportSelfClsParameterName = true
+reportImplicitStringConcatenation = false
+reportUnusedCallResult = false
+reportUnusedExpression = true
+reportUnnecessaryTypeIgnoreComment = true
+reportMatchNotExhaustive = true
+# Unknown types - relaxed for third-party libs
+reportUnknownMemberType = false
+reportUnknownArgumentType = false
+reportUnknownVariableType = false
+reportUnknownParameterType = false
+reportMissingParameterType = "warning"
+
+[tool.pylint.main]
+py-version = "3.11"
+ignore = [".venv", "__pycache__"]
+jobs = 0  # Use all available CPUs
+
+[tool.pylint.messages_control]
+max-line-length = 88
+disable = [
+    "line-too-long",           # Handled by black
+    "missing-module-docstring", # Allow missing module docstrings
+    "missing-class-docstring", # Allow for small classes
+    "missing-function-docstring",  # Allow for internal functions
+    "too-few-public-methods",  # Allow utility classes
+    "duplicate-code",          # Similar patterns are sometimes needed
+    "import-outside-toplevel", # Allow lazy imports
+    "broad-exception-caught",  # Sometimes needed for robustness
+    "too-many-instance-attributes",  # Complex objects are fine
+    "fixme",                   # Allow TODO comments
+]
+
+[tool.pylint.design]
+max-args = 7
+max-locals = 15
+max-returns = 6
+max-branches = 12
+max-statements = 50
+max-parents = 7
+max-attributes = 10
+min-public-methods = 1
+max-public-methods = 20
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "ex", "fp", "fd", "df", "e", "f", "n", "x", "y", "id", "db"]
+
+[tool.pylint.format]
+max-module-lines = 1000
+
+[tool.pylint.similarities]
+min-similarity-lines = 4
+ignore-comments = true
+ignore-docstrings = true
+ignore-imports = true
+
+[tool.pylint.refactoring]
+max-nested-blocks = 5

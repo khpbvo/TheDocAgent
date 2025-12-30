@@ -3,18 +3,18 @@
 Provides ApplyPatchTool-style approval workflow for DOCX and XLSX modifications.
 """
 
-from .base import ApprovalTracker, DocumentOperation, DocumentEditor
+from .base import ApprovalTracker, DocumentEditor, DocumentOperation
+from .diff_display import render_diff
 from .docx_editor import DocxEditor, DocxOperation
 from .xlsx_editor import XlsxEditor, XlsxOperation
-from .diff_display import render_diff
 
 __all__ = [
     "ApprovalTracker",
-    "DocumentOperation", 
     "DocumentEditor",
+    "DocumentOperation",
     "DocxEditor",
     "DocxOperation",
-    "XlsxEditor", 
+    "XlsxEditor",
     "XlsxOperation",
     "render_diff",
 ]

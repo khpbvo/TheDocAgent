@@ -11,9 +11,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import defusedxml.minidom
 import zipfile
 from pathlib import Path
+
+import defusedxml.minidom
 
 
 def main():
@@ -110,7 +111,7 @@ def validate_document(doc_path):
                     temp_dir,
                     str(doc_path),
                 ],
-                capture_output=True,
+                check=False, capture_output=True,
                 timeout=10,
                 text=True,
             )
@@ -132,7 +133,7 @@ def validate_document(doc_path):
 
 def condense_xml(xml_file):
     """Strip unnecessary whitespace and remove comments."""
-    with open(xml_file, "r", encoding="utf-8") as f:
+    with open(xml_file, encoding="utf-8") as f:
         dom = defusedxml.minidom.parse(f)
 
     # Process each element to remove whitespace and comments

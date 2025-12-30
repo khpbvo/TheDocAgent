@@ -151,7 +151,11 @@ async def main():
     mcp_servers = []
     filesystem_root = None
     if not args.no_mcp_filesystem:
-        filesystem_root = Path(args.mcp_filesystem_root).resolve() if args.mcp_filesystem_root else get_repo_root()
+        filesystem_root = (
+            Path(args.mcp_filesystem_root).resolve()
+            if args.mcp_filesystem_root
+            else get_repo_root()
+        )
         filesystem_server = build_filesystem_mcp_server(filesystem_root)
         if filesystem_server:
             mcp_servers = [filesystem_server]
@@ -161,11 +165,13 @@ async def main():
     approval_mode = not args.no_approval
     if approval_mode:
         from .tools import set_workspace_root
+
         workspace_root = filesystem_root or get_repo_root()
         set_workspace_root(workspace_root)
-        
+
         if args.auto_approve:
             import os
+
             os.environ["DOCUMENT_EDIT_AUTO_APPROVE"] = "1"
             print("Document edits: auto-approve enabled")
         else:
@@ -207,18 +213,17 @@ async def main():
                     show_reasoning=not args.no_reasoning,
                     show_tool_calls=not args.no_tool_calls,
                 )
-    else:
-        if args.simple:
-            from .repl import run_simple_repl
+    elif args.simple:
+        from .repl import run_simple_repl
 
-            await run_simple_repl(agent, session)
-        else:
-            await run_document_analyzer_repl(
-                agent=agent,
-                session=session,
-                show_reasoning=not args.no_reasoning,
-                show_tool_calls=not args.no_tool_calls,
-            )
+        await run_simple_repl(agent, session)
+    else:
+        await run_document_analyzer_repl(
+            agent=agent,
+            session=session,
+            show_reasoning=not args.no_reasoning,
+            show_tool_calls=not args.no_tool_calls,
+        )
 
 
 def run():
