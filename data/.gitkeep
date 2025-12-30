@@ -1,0 +1,2 @@
+# This directory stores SQLite session databases for conversation memory.
+# The sessions.db file will be created automatically on first run.

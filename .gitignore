@@ -1,1 +1,69 @@
+
+# --- OS / Editor ---
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# JetBrains
+.idea/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env/
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Type checking
+.mypy_cache/
+.pytype/
+.ruff_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# --- Project runtime artifacts ---
+
+# Local session DBs / caches
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Logs
+*.log
+
+# Temp files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Local scratch / outputs
+Workfolder/
+
+# Claude / tooling state
+.claude/
