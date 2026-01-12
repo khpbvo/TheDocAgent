@@ -202,16 +202,50 @@ async def run_document_analyzer_repl(
     session: SQLiteSession,
     show_reasoning: bool = True,
     show_tool_calls: bool = True,
+    ui_mode: str = "auto",
 ) -> None:
-    """Run the Document Analyzer REPL with Textual if available."""
-    if TEXTUAL_AVAILABLE:
+    """Run the Document Analyzer REPL with specified UI mode.
+
+    Args:
+        agent: The document analyzer agent to run.
+        session: SQLiteSession for conversation persistence.
+        show_reasoning: Whether to highlight reasoning text.
+        show_tool_calls: Whether to show tool call notifications.
+        ui_mode: UI mode - "textual", "rich", "plain", or "auto".
+    """
+    # Resolve auto mode
+    if ui_mode == "auto":
+        if TEXTUAL_AVAILABLE:
+            ui_mode = "textual"
+        elif RICH_AVAILABLE:
+            ui_mode = "rich"
+        else:
+            ui_mode = "plain"
+
+    # Route to appropriate REPL implementation
+    if ui_mode == "textual":
+        if not TEXTUAL_AVAILABLE:
+            raise RuntimeError(
+                "Textual not available. Install with: pip install textual"
+            )
         await run_document_analyzer_repl_textual(
             agent=agent,
             session=session,
             show_reasoning=show_reasoning,
             show_tool_calls=show_tool_calls,
         )
-    else:
+    elif ui_mode == "rich":
+        if not RICH_AVAILABLE:
+            raise RuntimeError("Rich not available. Install with: pip install rich")
+        from .rich_repl import run_rich_prompt_repl
+
+        await run_rich_prompt_repl(
+            agent=agent,
+            session=session,
+            show_reasoning=show_reasoning,
+            show_tool_calls=show_tool_calls,
+        )
+    else:  # plain
         await run_document_analyzer_repl_plain(
             agent=agent,
             session=session,

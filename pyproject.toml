@@ -119,6 +119,7 @@ ignore = [
 "__init__.py" = ["F401"]  # Allow unused imports in __init__.py
 "*_test.py" = ["S101"]    # Allow assert in tests
 "agent/repl.py" = ["PLW0603", "PERF401"]  # Allow globals and loops in REPL
+"agent/rich_repl.py" = ["PLW0603", "PERF401"]  # Allow globals and loops in REPL
 "agent/approval_dialog.py" = ["PLW0603"]  # Allow globals for state management
 "skills/*/scripts/*.py" = ["S311", "S314"]  # Allow random and xml in scripts
 

@@ -17,3 +17,4 @@ pandas>=2.0.0
 # REPL UI
 rich>=13.7.0
 textual>=0.58.0
+prompt-toolkit>=3.0.0  # Enhanced input with history for Rich REPL mode

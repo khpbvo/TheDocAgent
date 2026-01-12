@@ -127,6 +127,13 @@ Examples:
         action="store_true",
         help="Disable approval mode entirely (use direct write tools instead of diff preview)",
     )
+    parser.add_argument(
+        "--ui",
+        type=str,
+        choices=["textual", "rich", "plain", "auto"],
+        default="auto",
+        help="UI mode: textual (full TUI), rich (copy-paste friendly), plain (minimal), auto (best available)",
+    )
     return parser.parse_args()
 
 
@@ -212,6 +219,7 @@ async def main():
                     session=session,
                     show_reasoning=not args.no_reasoning,
                     show_tool_calls=not args.no_tool_calls,
+                    ui_mode=args.ui,
                 )
     elif args.simple:
         from .repl import run_simple_repl
@@ -223,6 +231,7 @@ async def main():
             session=session,
             show_reasoning=not args.no_reasoning,
             show_tool_calls=not args.no_tool_calls,
+            ui_mode=args.ui,
         )
 
 
