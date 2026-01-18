@@ -10,19 +10,33 @@ from pathlib import Path
 
 from agents import function_tool
 
+from .output_utils import truncate_json_output, truncate_output
+
 # Add skills directory to path for imports
 SKILLS_DIR = Path(__file__).parent.parent.parent / "skills"
 sys.path.insert(0, str(SKILLS_DIR / "pdf" / "scripts"))
 
 
 @function_tool
-def extract_pdf_text(file_path: str, page_numbers_json: str | None = None) -> str:
+def extract_pdf_text(
+    file_path: str,
+    page_numbers_json: str | None = None,
+    start_page: int | None = None,
+    max_pages: int | None = None,
+) -> str:
     """Extract text content from a PDF file.
+
+    For large PDFs, use start_page and max_pages for pagination, or use
+    search_pdf_text() to find specific content first.
 
     Args:
         file_path: Path to the PDF file to analyze.
-        page_numbers_json: Optional JSON array of page numbers to extract (1-indexed).
-                           Example: '[1, 2, 5]'. If not provided, extracts all pages.
+        page_numbers_json: Optional JSON array of specific page numbers to extract (1-indexed).
+                           Example: '[1, 2, 5]'. If not provided, extracts sequentially.
+        start_page: Starting page number for pagination (1-indexed, default: 1).
+                    Use this with max_pages to paginate through large documents.
+        max_pages: Maximum number of pages to extract (default: all).
+                   Useful for limiting output size on large documents.
 
     Returns:
         Extracted text content from the PDF, organized by page.
@@ -48,9 +62,18 @@ def extract_pdf_text(file_path: str, page_numbers_json: str | None = None) -> st
         text_content = []
         with pdfplumber.open(file_path) as pdf:
             total_pages = len(pdf.pages)
-            pages_to_process = (
-                page_numbers if page_numbers else list(range(1, total_pages + 1))
-            )
+
+            # Determine which pages to process
+            if page_numbers:
+                # Explicit page list takes priority
+                pages_to_process = page_numbers
+            else:
+                # Use pagination parameters
+                start = start_page if start_page else 1
+                end = total_pages + 1
+                if max_pages:
+                    end = min(start + max_pages, total_pages + 1)
+                pages_to_process = list(range(start, end))
 
             for page_num in pages_to_process:
                 if 1 <= page_num <= total_pages:
@@ -63,11 +86,19 @@ def extract_pdf_text(file_path: str, page_numbers_json: str | None = None) -> st
                         f"=== Page {page_num} === (invalid page number)"
                     )
 
-        return (
-            "\n\n".join(text_content)
+        # Add pagination info to help agent navigate
+        pagination_info = (
+            f"[Showing pages {pages_to_process[0]}-{pages_to_process[-1]} of {total_pages} total]"
+            if pages_to_process
+            else ""
+        )
+
+        result = (
+            f"{pagination_info}\n\n" + "\n\n".join(text_content)
             if text_content
             else "No text content found in PDF."
         )
+        return truncate_output(result)
     except Exception as e:
         return f"Error extracting PDF text: {e!s}"
 
@@ -116,7 +147,7 @@ def extract_pdf_tables(file_path: str, page_number: int | None = None) -> str:
         if not all_tables:
             return "No tables found in PDF."
 
-        return json.dumps(all_tables, indent=2)
+        return truncate_json_output(json.dumps(all_tables, indent=2))
     except Exception as e:
         return f"Error extracting PDF tables: {e!s}"
 
@@ -367,3 +398,114 @@ def split_pdf(file_path: str, output_dir: str) -> str:
         return f"Successfully split PDF into {len(created_files)} pages in {output_dir}"
     except Exception as e:
         return f"Error splitting PDF: {e!s}"
+
+
+@function_tool
+def search_pdf_text(
+    file_path: str,
+    query: str,
+    case_sensitive: bool = False,
+    context_chars: int = 100,
+    max_results: int = 20,
+) -> str:
+    """Search for text within a PDF and return matching pages with context.
+
+    Use this to find specific content in large PDFs before extracting full pages.
+    Returns page numbers and surrounding context for each match.
+
+    Args:
+        file_path: Path to the PDF file to search.
+        query: Text to search for in the PDF.
+        case_sensitive: Whether the search should be case-sensitive (default: False).
+        context_chars: Number of characters to show around each match (default: 100).
+        max_results: Maximum number of results to return (default: 20).
+
+    Returns:
+        JSON with matching pages, match counts, and context snippets.
+        Use the page numbers with extract_pdf_text(page_numbers_json='[...]') to get full content.
+    """
+    import pdfplumber
+
+    path = Path(file_path)
+    if not path.exists():
+        return f"Error: File not found: {file_path}"
+
+    if path.suffix.lower() != ".pdf":
+        return f"Error: Not a PDF file: {file_path}"
+
+    if not query or not query.strip():
+        return "Error: Search query cannot be empty."
+
+    try:
+        results = []
+        total_matches = 0
+        pages_with_matches = set()
+
+        search_query = query if case_sensitive else query.lower()
+
+        with pdfplumber.open(file_path) as pdf:
+            total_pages = len(pdf.pages)
+
+            for page_num, page in enumerate(pdf.pages, 1):
+                text = page.extract_text()
+                if not text:
+                    continue
+
+                search_text = text if case_sensitive else text.lower()
+
+                # Find all matches on this page
+                start_pos = 0
+                page_matches = []
+                while True:
+                    pos = search_text.find(search_query, start_pos)
+                    if pos == -1:
+                        break
+
+                    total_matches += 1
+                    pages_with_matches.add(page_num)
+
+                    # Extract context around the match
+                    context_start = max(0, pos - context_chars)
+                    context_end = min(len(text), pos + len(query) + context_chars)
+                    context = text[context_start:context_end]
+
+                    # Add ellipsis if truncated
+                    if context_start > 0:
+                        context = "..." + context
+                    if context_end < len(text):
+                        context = context + "..."
+
+                    if len(results) < max_results:
+                        page_matches.append(
+                            {
+                                "position": pos,
+                                "context": context.replace("\n", " ").strip(),
+                            }
+                        )
+
+                    start_pos = pos + 1
+
+                if page_matches:
+                    results.append(
+                        {
+                            "page": page_num,
+                            "match_count": len(page_matches),
+                            "matches": page_matches[:5],  # Limit matches per page
+                        }
+                    )
+
+        if not results:
+            return f"No matches found for '{query}' in the PDF ({total_pages} pages searched)."
+
+        output = {
+            "query": query,
+            "total_matches": total_matches,
+            "pages_with_matches": sorted(pages_with_matches),
+            "total_pages": total_pages,
+            "results": results[:max_results],
+            "tip": "Use extract_pdf_text(page_numbers_json='[...]') with these page numbers to get full content.",
+        }
+
+        return json.dumps(output, indent=2)
+    except Exception as e:
+        return f"Error searching PDF: {e!s}"

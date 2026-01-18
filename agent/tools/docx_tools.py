@@ -11,6 +11,8 @@ from pathlib import Path
 
 from agents import function_tool
 
+from .output_utils import truncate_output
+
 # Try to import pypandoc (handles pandoc binary location automatically)
 try:
     import pypandoc
@@ -46,7 +48,9 @@ def extract_docx_text(file_path: str) -> str:
         if PYPANDOC_AVAILABLE:
             # Use pypandoc which handles finding pandoc automatically
             content = pypandoc.convert_file(str(path), "markdown")
-            return content if content.strip() else "No text content found in document."
+            if content.strip():
+                return truncate_output(content)
+            return "No text content found in document."
         return "Error: pypandoc not installed. Run: pip install pypandoc_binary"
     except Exception as e:
         return f"Error extracting DOCX text: {e!s}"
@@ -76,7 +80,9 @@ def extract_docx_with_changes(file_path: str) -> str:
             content = pypandoc.convert_file(
                 str(path), "markdown", extra_args=["--track-changes=all"]
             )
-            return content if content.strip() else "No text content found in document."
+            if content.strip():
+                return truncate_output(content)
+            return "No text content found in document."
         return "Error: pypandoc not installed. Run: pip install pypandoc_binary"
     except Exception as e:
         return f"Error extracting DOCX with tracked changes: {e!s}"
@@ -341,3 +347,116 @@ def apply_tracked_changes(
         return f"Error: Required skill module not found: {e}."
     except Exception as e:
         return f"Error applying tracked changes: {e!s}"
+
+
+@function_tool
+def search_docx_text(
+    file_path: str,
+    query: str,
+    case_sensitive: bool = False,
+    context_chars: int = 100,
+    max_results: int = 20,
+) -> str:
+    """Search for text within a DOCX document and return matching paragraphs with context.
+
+    Use this to find specific content in large documents before extracting full text.
+    Returns paragraph numbers and surrounding context for each match.
+
+    Args:
+        file_path: Path to the DOCX file to search.
+        query: Text to search for in the document.
+        case_sensitive: Whether the search should be case-sensitive (default: False).
+        context_chars: Number of characters to show around each match (default: 100).
+        max_results: Maximum number of results to return (default: 20).
+
+    Returns:
+        JSON with matching paragraphs, match counts, and context snippets.
+    """
+    from defusedxml import ElementTree as ET
+
+    path = Path(file_path)
+    if not path.exists():
+        return f"Error: File not found: {file_path}"
+
+    if path.suffix.lower() != ".docx":
+        return f"Error: Not a DOCX file: {file_path}"
+
+    if not query or not query.strip():
+        return "Error: Search query cannot be empty."
+
+    try:
+        with zipfile.ZipFile(file_path, "r") as zf:
+            document_xml = zf.read("word/document.xml")
+
+        ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+        root = ET.fromstring(document_xml)
+
+        results = []
+        total_matches = 0
+        search_query = query if case_sensitive else query.lower()
+
+        # Extract all paragraphs
+        paragraphs = []
+        for para in root.findall(".//w:p", ns):
+            text_elements = para.findall(".//w:t", ns)
+            para_text = "".join(t.text or "" for t in text_elements)
+            if para_text.strip():
+                paragraphs.append(para_text)
+
+        # Search through paragraphs
+        for para_num, para_text in enumerate(paragraphs, 1):
+            search_text = para_text if case_sensitive else para_text.lower()
+
+            # Find all matches in this paragraph
+            start_pos = 0
+            para_matches = []
+            while True:
+                pos = search_text.find(search_query, start_pos)
+                if pos == -1:
+                    break
+
+                total_matches += 1
+
+                # Extract context around the match
+                context_start = max(0, pos - context_chars)
+                context_end = min(len(para_text), pos + len(query) + context_chars)
+                context = para_text[context_start:context_end]
+
+                # Add ellipsis if truncated
+                if context_start > 0:
+                    context = "..." + context
+                if context_end < len(para_text):
+                    context = context + "..."
+
+                para_matches.append(
+                    {
+                        "position": pos,
+                        "context": context.replace("\n", " ").strip(),
+                    }
+                )
+
+                start_pos = pos + 1
+
+            if para_matches and len(results) < max_results:
+                results.append(
+                    {
+                        "paragraph": para_num,
+                        "match_count": len(para_matches),
+                        "matches": para_matches[:5],  # Limit matches per paragraph
+                    }
+                )
+
+        if not results:
+            return f"No matches found for '{query}' in the document ({len(paragraphs)} paragraphs searched)."
+
+        output = {
+            "query": query,
+            "total_matches": total_matches,
+            "paragraphs_with_matches": len(results),
+            "total_paragraphs": len(paragraphs),
+            "results": results,
+        }
+
+        return json.dumps(output, indent=2)
+    except Exception as e:
+        return f"Error searching DOCX: {e!s}"

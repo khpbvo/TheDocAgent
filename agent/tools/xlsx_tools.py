@@ -9,6 +9,8 @@ from pathlib import Path
 
 from agents import function_tool
 
+from .output_utils import truncate_json_output, truncate_output
+
 # Add skills directory to path for imports
 SKILLS_DIR = Path(__file__).parent.parent.parent / "skills"
 sys.path.insert(0, str(SKILLS_DIR / "xlsx"))
@@ -41,17 +43,24 @@ def get_sheet_names(file_path: str) -> str:
 
 @function_tool
 def read_sheet(
-    file_path: str, sheet_name: str | None = None, max_rows: int = 100
+    file_path: str,
+    sheet_name: str | None = None,
+    start_row: int = 1,
+    max_rows: int = 100,
 ) -> str:
-    """Read data from an Excel sheet.
+    """Read data from an Excel sheet with pagination support.
+
+    For large sheets, use start_row and max_rows to paginate through data,
+    or use search_sheet() to find specific content first.
 
     Args:
         file_path: Path to the Excel file.
         sheet_name: Name of the sheet to read. If not provided, reads the active sheet.
-        max_rows: Maximum number of rows to return (default 100 to avoid overwhelming output).
+        start_row: Starting row number (1-indexed, default: 1). Use for pagination.
+        max_rows: Maximum number of rows to return (default: 100).
 
     Returns:
-        JSON string containing the sheet data as a list of rows.
+        JSON string containing the sheet data as a list of rows with pagination info.
     """
     from openpyxl import load_workbook
 
@@ -70,23 +79,42 @@ def read_sheet(
         else:
             ws = wb.active
 
+        # Count total rows
+        total_rows = ws.max_row or 0
+
         data = []
+        rows_processed = 0
         for row_idx, row in enumerate(ws.iter_rows(values_only=True), 1):
-            if row_idx > max_rows:
+            # Skip rows before start_row
+            if row_idx < start_row:
+                continue
+            # Stop after max_rows
+            if rows_processed >= max_rows:
                 break
             # Convert None to empty string for cleaner output
             data.append([str(cell) if cell is not None else "" for cell in row])
+            rows_processed += 1
 
         wb.close()
 
+        end_row = start_row + len(data) - 1 if data else start_row
+        has_more = end_row < total_rows
+
         result = {
             "sheet_name": ws.title,
+            "start_row": start_row,
+            "end_row": end_row,
             "rows_returned": len(data),
-            "max_rows_limit": max_rows,
+            "total_rows": total_rows,
+            "has_more_rows": has_more,
             "data": data,
         }
 
-        return json.dumps(result, indent=2)
+        if has_more:
+            result["next_start_row"] = end_row + 1
+            result["tip"] = f"Use start_row={end_row + 1} to get next page"
+
+        return truncate_json_output(json.dumps(result, indent=2))
     except Exception as e:
         return f"Error reading Excel sheet: {e!s}"
 
@@ -176,7 +204,8 @@ def analyze_data(
         df = pd.read_excel(file_path, sheet_name=sheet_name)
 
         if analysis_type == "summary":
-            return f"Statistical Summary for '{sheet_name or 'Sheet1'}':\n{df.describe().to_string()}"
+            result = f"Statistical Summary for '{sheet_name or 'Sheet1'}':\n{df.describe().to_string()}"
+            return truncate_output(result)
         if analysis_type == "info":
             info_str = f"Shape: {df.shape[0]} rows x {df.shape[1]} columns\n\n"
             info_str += "Column Info:\n"
@@ -185,9 +214,10 @@ def analyze_data(
                 info_str += (
                     f"  {col}: {df[col].dtype}, {non_null}/{len(df)} non-null values\n"
                 )
-            return info_str
+            return truncate_output(info_str)
         if analysis_type == "head":
-            return f"First 10 rows:\n{df.head(10).to_string()}"
+            result = f"First 10 rows:\n{df.head(10).to_string()}"
+            return truncate_output(result)
         if analysis_type == "shape":
             return f"Dataset shape: {df.shape[0]} rows, {df.shape[1]} columns\nColumns: {', '.join(str(c) for c in df.columns)}"
         return f"Unknown analysis type: {analysis_type}. Use 'summary', 'info', 'head', or 'shape'."
@@ -320,3 +350,96 @@ def recalculate_formulas(file_path: str, timeout: int = 30) -> str:
         return "Error: recalc module not found. Make sure skills/xlsx/recalc.py exists and LibreOffice is installed."
     except Exception as e:
         return f"Error recalculating formulas: {e!s}"
+
+
+@function_tool
+def search_sheet(
+    file_path: str,
+    query: str,
+    sheet_name: str | None = None,
+    case_sensitive: bool = False,
+    max_results: int = 50,
+) -> str:
+    """Search for text within an Excel sheet and return matching cells.
+
+    Use this to find specific content in large spreadsheets before reading full data.
+    Returns cell references and values for each match.
+
+    Args:
+        file_path: Path to the Excel file to search.
+        query: Text to search for in cell values.
+        sheet_name: Name of sheet to search. If not provided, searches active sheet.
+        case_sensitive: Whether the search should be case-sensitive (default: False).
+        max_results: Maximum number of results to return (default: 50).
+
+    Returns:
+        JSON with matching cells, their values, and row numbers.
+        Use the row numbers with read_sheet(start_row=N) to get surrounding data.
+    """
+    from openpyxl import load_workbook
+
+    path = Path(file_path)
+    if not path.exists():
+        return f"Error: File not found: {file_path}"
+
+    if not query or not query.strip():
+        return "Error: Search query cannot be empty."
+
+    try:
+        wb = load_workbook(file_path, data_only=True)
+
+        if sheet_name:
+            if sheet_name not in wb.sheetnames:
+                return f"Error: Sheet '{sheet_name}' not found. Available sheets: {', '.join(wb.sheetnames)}"
+            ws = wb[sheet_name]
+        else:
+            ws = wb.active
+
+        results = []
+        total_matches = 0
+        rows_with_matches = set()
+        search_query = query if case_sensitive else query.lower()
+
+        for row in ws.iter_rows():
+            for cell in row:
+                if cell.value is None:
+                    continue
+
+                cell_str = str(cell.value)
+                search_text = cell_str if case_sensitive else cell_str.lower()
+
+                if search_query in search_text:
+                    total_matches += 1
+                    rows_with_matches.add(cell.row)
+
+                    if len(results) < max_results:
+                        results.append(
+                            {
+                                "cell": cell.coordinate,
+                                "row": cell.row,
+                                "column": cell.column,
+                                "value": (
+                                    cell_str[:200] + "..."
+                                    if len(cell_str) > 200
+                                    else cell_str
+                                ),
+                            }
+                        )
+
+        wb.close()
+
+        if not results:
+            return f"No matches found for '{query}' in the sheet."
+
+        output = {
+            "query": query,
+            "sheet_name": ws.title,
+            "total_matches": total_matches,
+            "rows_with_matches": sorted(rows_with_matches)[:50],  # Limit row list
+            "results": results,
+            "tip": "Use read_sheet(start_row=N) with these row numbers to get surrounding data.",
+        }
+
+        return json.dumps(output, indent=2)
+    except Exception as e:
+        return f"Error searching Excel sheet: {e!s}"

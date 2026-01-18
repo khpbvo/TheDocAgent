@@ -108,15 +108,42 @@ def _shorten(text: str, limit: int = 160) -> str:
     return cleaned[: limit - 3].rstrip() + "..."
 
 
+# Mapping of hosted tool types to display names
+HOSTED_TOOL_NAMES: dict[str, str] = {
+    "web_search": "WebSearch",
+    "web_search_call": "WebSearch",
+    "file_search": "FileSearch",
+    "file_search_call": "FileSearch",
+    "code_interpreter": "CodeInterpreter",
+    "code_interpreter_call": "CodeInterpreter",
+    "computer": "Computer",
+    "computer_call": "Computer",
+    "shell": "Shell",
+    "shell_call": "Shell",
+    "mcp": "MCP",
+    "mcp_call": "MCP",
+    "image_generation": "ImageGeneration",
+    "image_generation_call": "ImageGeneration",
+}
+
+
 def _get_tool_call_meta(raw_item: Any) -> tuple[str, str | None, str, str | None]:
-    """Extract tool call metadata from a raw item."""
+    """Extract tool call metadata from a raw item.
+
+    Handles both FunctionTool (has .name) and hosted tools like WebSearchTool
+    (has .type but no .name).
+    """
     tool_name = None
     server_label = None
     call_id = None
     args = None
+    tool_type = None
 
+    # Extract from object attributes
     if hasattr(raw_item, "name"):
         tool_name = getattr(raw_item, "name", None)
+    if hasattr(raw_item, "type"):
+        tool_type = getattr(raw_item, "type", None)
     if hasattr(raw_item, "server_label"):
         server_label = getattr(raw_item, "server_label", None)
     if hasattr(raw_item, "call_id"):
@@ -126,16 +153,17 @@ def _get_tool_call_meta(raw_item: Any) -> tuple[str, str | None, str, str | None
     if hasattr(raw_item, "arguments"):
         args = getattr(raw_item, "arguments", None)
 
+    # Extract from dict keys
     if isinstance(raw_item, dict):
-        tool_name = (
-            tool_name
-            or raw_item.get("name")
-            or raw_item.get("tool")
-            or raw_item.get("type")
-        )
+        tool_name = tool_name or raw_item.get("name")
+        tool_type = tool_type or raw_item.get("type")
         server_label = server_label or raw_item.get("server_label")
         call_id = call_id or raw_item.get("call_id") or raw_item.get("id")
         args = args if args is not None else raw_item.get("arguments")
+
+    # If no name but we have a type, map type to display name
+    if not tool_name and tool_type:
+        tool_name = HOSTED_TOOL_NAMES.get(tool_type, tool_type)
 
     return tool_name or "unknown", server_label, _stringify(args), call_id
 
@@ -269,7 +297,7 @@ async def run_rich_prompt_repl(
                     agent,
                     input=user_input,
                     session=session,
-                    max_turns=99,
+                    max_turns=100,
                 )
 
                 accumulated_text = ""

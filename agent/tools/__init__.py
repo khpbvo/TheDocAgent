@@ -27,6 +27,7 @@ from .docx_tools import (
     extract_docx_with_changes,
     get_docx_comments,
     get_docx_structure,
+    search_docx_text,
 )
 from .pdf_tools import (
     extract_pdf_tables,
@@ -35,6 +36,7 @@ from .pdf_tools import (
     get_pdf_form_fields,
     get_pdf_metadata,
     merge_pdfs,
+    search_pdf_text,
     split_pdf,
 )
 
@@ -46,12 +48,13 @@ from .xlsx_tools import (
     get_sheet_names,
     read_sheet,
     recalculate_formulas,
+    search_sheet,
     write_cell,
 )
 
 # All tools for easy import (read-only + direct write)
 ALL_TOOLS = [
-    # PDF (7 tools)
+    # PDF (8 tools)
     extract_pdf_text,
     extract_pdf_tables,
     get_pdf_metadata,
@@ -59,7 +62,8 @@ ALL_TOOLS = [
     fill_pdf_form,
     merge_pdfs,
     split_pdf,
-    # DOCX (7 tools)
+    search_pdf_text,
+    # DOCX (8 tools)
     extract_docx_text,
     extract_docx_with_changes,
     get_docx_comments,
@@ -67,7 +71,8 @@ ALL_TOOLS = [
     add_docx_comment,
     create_docx,
     apply_tracked_changes,
-    # XLSX (7 tools)
+    search_docx_text,
+    # XLSX (8 tools)
     get_sheet_names,
     read_sheet,
     get_formulas,
@@ -75,12 +80,13 @@ ALL_TOOLS = [
     write_cell,
     add_formula,
     recalculate_formulas,
+    search_sheet,
 ]
 
 # Tools with approval flow (diff preview + Y/N confirmation)
 # Use these instead of direct write tools when user control is needed
 ALL_TOOLS_WITH_APPROVAL = [
-    # PDF (7 tools) - read-only, no approval needed
+    # PDF (8 tools) - read-only, no approval needed
     extract_pdf_text,
     extract_pdf_tables,
     get_pdf_metadata,
@@ -88,20 +94,23 @@ ALL_TOOLS_WITH_APPROVAL = [
     fill_pdf_form,
     merge_pdfs,
     split_pdf,
-    # DOCX read (4 tools)
+    search_pdf_text,
+    # DOCX read (5 tools)
     extract_docx_text,
     extract_docx_with_changes,
     get_docx_comments,
     get_docx_structure,
+    search_docx_text,
     # DOCX write with approval (3 tools)
     replace_docx_text,
     insert_docx_text,
     delete_docx_text,
-    # XLSX read (4 tools)
+    # XLSX read (5 tools)
     get_sheet_names,
     read_sheet,
     get_formulas,
     analyze_data,
+    search_sheet,
     # XLSX write with approval (3 tools)
     update_xlsx_cell,
     add_xlsx_formula,
@@ -117,6 +126,7 @@ __all__ = [
     "fill_pdf_form",
     "merge_pdfs",
     "split_pdf",
+    "search_pdf_text",
     # DOCX
     "extract_docx_text",
     "extract_docx_with_changes",
@@ -125,6 +135,7 @@ __all__ = [
     "add_docx_comment",
     "create_docx",
     "apply_tracked_changes",
+    "search_docx_text",
     # XLSX
     "get_sheet_names",
     "read_sheet",
@@ -133,6 +144,7 @@ __all__ = [
     "write_cell",
     "add_formula",
     "recalculate_formulas",
+    "search_sheet",
     # Approval tools
     "replace_docx_text",
     "insert_docx_text",
