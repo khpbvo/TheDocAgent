@@ -4,9 +4,9 @@ Provides truncation functionality to prevent context window overflow
 when tools return large amounts of data (e.g., full PDF text, large tables).
 """
 
-# Maximum characters for tool output to prevent context window overflow
-# This leaves room for conversation history and model responses
-MAX_TOOL_OUTPUT_CHARS = 50_000
+# Maximum characters for tool output to prevent context window overflow.
+# Keeping this tighter reduces session growth across multi-turn analysis.
+MAX_TOOL_OUTPUT_CHARS = 25_000
 
 
 def truncate_output(

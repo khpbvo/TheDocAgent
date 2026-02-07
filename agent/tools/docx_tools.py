@@ -11,7 +11,7 @@ from pathlib import Path
 
 from agents import function_tool
 
-from .output_utils import truncate_output
+from .output_utils import truncate_json_output, truncate_output
 
 # Try to import pypandoc (handles pandoc binary location automatically)
 try:
@@ -28,14 +28,23 @@ sys.path.insert(0, str(SKILLS_DIR / "docx" / "ooxml" / "scripts"))
 
 
 @function_tool
-def extract_docx_text(file_path: str) -> str:
+def extract_docx_text(
+    file_path: str,
+    start_paragraph: int | None = None,
+    max_paragraphs: int | None = None,
+) -> str:
     """Extract plain text from a DOCX file using pandoc.
 
     Args:
         file_path: Path to the DOCX file.
+        start_paragraph: Optional starting paragraph number (1-indexed) for
+                         paginated extraction.
+        max_paragraphs: Optional maximum number of paragraphs to return.
 
     Returns:
-        Extracted text content from the document as markdown.
+        Extracted text from the document.
+        - If no paragraph range is provided, returns markdown via pandoc.
+        - If range parameters are provided, returns paragraph-targeted plain text.
     """
     path = Path(file_path)
     if not path.exists():
@@ -45,6 +54,47 @@ def extract_docx_text(file_path: str) -> str:
         return f"Error: Not a DOCX file: {file_path}"
 
     try:
+        # Paragraph-level extraction path for targeted retrieval in large documents
+        if start_paragraph is not None or max_paragraphs is not None:
+            from defusedxml import ElementTree as ET
+
+            with zipfile.ZipFile(file_path, "r") as zf:
+                document_xml = zf.read("word/document.xml")
+
+            ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+            root = ET.fromstring(document_xml)
+
+            paragraphs = []
+            for para in root.findall(".//w:p", ns):
+                text_elements = para.findall(".//w:t", ns)
+                para_text = "".join(t.text or "" for t in text_elements).strip()
+                if para_text:
+                    paragraphs.append(para_text)
+
+            if not paragraphs:
+                return "No text content found in document."
+
+            start = start_paragraph if start_paragraph and start_paragraph > 0 else 1
+            if start > len(paragraphs):
+                return f"Error: start_paragraph {start} is beyond document length ({len(paragraphs)} paragraphs)."
+
+            if max_paragraphs is not None and max_paragraphs <= 0:
+                return "Error: max_paragraphs must be a positive integer."
+
+            end = len(paragraphs) + 1
+            if max_paragraphs:
+                end = min(start + max_paragraphs, len(paragraphs) + 1)
+
+            selected = []
+            for para_num in range(start, end):
+                para_text = paragraphs[para_num - 1]
+                selected.append(f"=== Paragraph {para_num} ===\n{para_text}")
+
+            pagination_info = (
+                f"[Showing paragraphs {start}-{end - 1} of {len(paragraphs)} total]"
+            )
+            return truncate_output(f"{pagination_info}\n\n" + "\n\n".join(selected))
+
         if PYPANDOC_AVAILABLE:
             # Use pypandoc which handles finding pandoc automatically
             content = pypandoc.convert_file(str(path), "markdown")
@@ -455,8 +505,9 @@ def search_docx_text(
             "paragraphs_with_matches": len(results),
             "total_paragraphs": len(paragraphs),
             "results": results,
+            "tip": "Use extract_docx_text(start_paragraph=N, max_paragraphs=M) for targeted retrieval, or use retrieve_document_segments() with selectors from directed_search_document().",
         }
 
-        return json.dumps(output, indent=2)
+        return truncate_json_output(json.dumps(output, indent=2))
     except Exception as e:
         return f"Error searching DOCX: {e!s}"

@@ -131,7 +131,7 @@ python -m agent.main --auto-approve
 
 ### PDF (.pdf)
 
-Tools (7):
+Tools (8):
 
 - `extract_pdf_text(file_path, page_numbers_json=None)` — extract text for all or selected pages
 - `extract_pdf_tables(file_path, page_number=None)` — extract tables as JSON
@@ -140,6 +140,7 @@ Tools (7):
 - `fill_pdf_form(file_path, field_values_json, output_path)` — fill form fields and save a new PDF
 - `merge_pdfs(input_files_json, output_path)` — merge PDFs into one
 - `split_pdf(file_path, output_dir)` — split a PDF into per-page PDFs
+- `search_pdf_text(file_path, query, case_sensitive=False, context_chars=100, max_results=20)` — find matching pages/snippets
 
 Example prompts you can type in the REPL:
 
@@ -151,10 +152,11 @@ Example prompts you can type in the REPL:
 
 Read tools:
 
-- `extract_docx_text(file_path)` — convert DOCX to markdown (via pandoc)
+- `extract_docx_text(file_path, start_paragraph=None, max_paragraphs=None)` — convert DOCX to markdown (via pandoc) or pull targeted paragraph ranges
 - `extract_docx_with_changes(file_path)` — extract text with tracked changes visible
 - `get_docx_comments(file_path)` — extract comments (author/date/text) as JSON
 - `get_docx_structure(file_path)` — heading outline
+- `search_docx_text(file_path, query, case_sensitive=False, context_chars=100, max_results=20)` — find matching paragraphs/snippets
 
 Write tools (direct mode):
 
@@ -181,6 +183,7 @@ Read tools:
 - `read_sheet(file_path, sheet_name=None, max_rows=100)` — read rows as JSON
 - `get_formulas(file_path, sheet_name=None)` — list formula cells
 - `analyze_data(file_path, sheet_name=None, analysis_type="summary")` — pandas-based stats/info/head/shape
+- `search_sheet(file_path, query, sheet_name=None, case_sensitive=False, max_results=50)` — find matching rows/cells
 
 Write tools (direct mode):
 
@@ -196,6 +199,13 @@ Write tools (approval mode):
 Formula recalculation:
 
 - `recalculate_formulas(file_path, timeout=30)` — recalculates formulas via `skills/xlsx/recalc.py`
+
+### Cross-format directed retrieval
+
+For large files, use this two-step flow to avoid context overflow:
+
+- `directed_search_document(file_path, query, top_k=8, mode="hybrid")` — ranked selectors across PDF/DOCX/XLSX
+- `retrieve_document_segments(file_path, selectors_json, neighborhood=0, max_chars=8000)` — fetch only selected segments
 
 This requires **LibreOffice**.
 

@@ -29,6 +29,7 @@ from .docx_tools import (
     get_docx_structure,
     search_docx_text,
 )
+from .directed_search_tools import directed_search_document, retrieve_document_segments
 from .pdf_tools import (
     extract_pdf_tables,
     extract_pdf_text,
@@ -54,7 +55,7 @@ from .xlsx_tools import (
 
 # All tools for easy import (read-only + direct write)
 ALL_TOOLS = [
-    # PDF (8 tools)
+    # PDF (8 tools + directed search retrieval)
     extract_pdf_text,
     extract_pdf_tables,
     get_pdf_metadata,
@@ -63,6 +64,8 @@ ALL_TOOLS = [
     merge_pdfs,
     split_pdf,
     search_pdf_text,
+    directed_search_document,
+    retrieve_document_segments,
     # DOCX (8 tools)
     extract_docx_text,
     extract_docx_with_changes,
@@ -86,7 +89,7 @@ ALL_TOOLS = [
 # Tools with approval flow (diff preview + Y/N confirmation)
 # Use these instead of direct write tools when user control is needed
 ALL_TOOLS_WITH_APPROVAL = [
-    # PDF (8 tools) - read-only, no approval needed
+    # PDF (8 tools + directed search retrieval) - read-only, no approval needed
     extract_pdf_text,
     extract_pdf_tables,
     get_pdf_metadata,
@@ -95,6 +98,8 @@ ALL_TOOLS_WITH_APPROVAL = [
     merge_pdfs,
     split_pdf,
     search_pdf_text,
+    directed_search_document,
+    retrieve_document_segments,
     # DOCX read (5 tools)
     extract_docx_text,
     extract_docx_with_changes,
@@ -127,6 +132,8 @@ __all__ = [
     "merge_pdfs",
     "split_pdf",
     "search_pdf_text",
+    "directed_search_document",
+    "retrieve_document_segments",
     # DOCX
     "extract_docx_text",
     "extract_docx_with_changes",

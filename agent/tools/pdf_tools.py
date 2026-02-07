@@ -503,9 +503,9 @@ def search_pdf_text(
             "pages_with_matches": sorted(pages_with_matches),
             "total_pages": total_pages,
             "results": results[:max_results],
-            "tip": "Use extract_pdf_text(page_numbers_json='[...]') with these page numbers to get full content.",
+            "tip": "Use directed_search_document() + retrieve_document_segments() for focused retrieval, or extract_pdf_text(page_numbers_json='[...]') for full pages.",
         }
 
-        return json.dumps(output, indent=2)
+        return truncate_json_output(json.dumps(output, indent=2))
     except Exception as e:
         return f"Error searching PDF: {e!s}"

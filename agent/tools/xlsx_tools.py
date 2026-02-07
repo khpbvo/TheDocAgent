@@ -437,9 +437,9 @@ def search_sheet(
             "total_matches": total_matches,
             "rows_with_matches": sorted(rows_with_matches)[:50],  # Limit row list
             "results": results,
-            "tip": "Use read_sheet(start_row=N) with these row numbers to get surrounding data.",
+            "tip": "Use directed_search_document() + retrieve_document_segments() for focused retrieval, or read_sheet(start_row=N) for surrounding rows.",
         }
 
-        return json.dumps(output, indent=2)
+        return truncate_json_output(json.dumps(output, indent=2))
     except Exception as e:
         return f"Error searching Excel sheet: {e!s}"
